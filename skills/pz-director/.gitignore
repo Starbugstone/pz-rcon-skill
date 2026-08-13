@@ -1,26 +1,30 @@
-# Runtime state — operational, not source
-pz-director/state/
-pz-director/logs/
-state/
-logs/
-*.log
-
-# Runtime config — environment-specific overrides (keep .example as template)
-config.json
+# Secrets — NEVER commit
 .env
 .env.*
 !.env.example
+*.env
 
-# Python
+# Runtime state — operational, not source
+state/
+!state/*.example
+
+# Runtime config — environment-specific overrides (keep .example as template)
+config.json
+!config.json.example
+
+# Logs — operational
+logs/
+*.log
+
+# Archived / dead reference docs
+references/archive/
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.venv/
 .Python
-
-# OpenClaw runtime
-.openclaw/
 
 # Server snapshots — may contain internal IPs / server config
 snapshots/

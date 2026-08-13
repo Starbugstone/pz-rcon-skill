@@ -4,30 +4,50 @@ This file contains setup/runbook material that is useful for operators but not r
 
 ## Install / Enable
 
-1. Enable RCON in your Project Zomboid server config (`servertest.ini`):
-   - `RCONPort=<port>`
-   - `<PZ_RCON_PASSWORD>=<password>`
-2. Install `rcon-cli` (gorcon):
-   - https://github.com/gorcon/rcon-cli/releases
-3. Configure env in `pz-rcon/.env` (local only) using `pz-rcon/.env.example`.
-4. Load the skill into OpenClaw (`pz-rcon/` folder or packaged `.skill`).
+1. Enable Discord on your Project Zomboid server config (`servertest.ini`):
+   - `DiscordEnable=true`
+   - `<DISCORD_TOKEN>=<your_bot_token>`
+   - `DiscordChannelID=<pz-molt chat channel id>`
+   - `DiscordCommandChannel=<pz-molt-commands channel id>`
+2. Invite the PZ relay bot to both channels and record its user ID.
+3. Configure env in `~/.env` (local only) using `skills/pz-director/.env.example`.
+4. Load the skill into OpenClaw (`skills/pz-director/` folder or packaged `.skill`).
+5. Configure the systemd user service at `~/.config/systemd/user/simon-fast-listener.service` (template in `references/`).
 
-## Discord back-and-forth relay notes
+## Discord chat ↔ in-game relay
 
-Use `#pz-molt` as the secure ops relay channel.
+PZ's native Discord bridge mirrors `#pz-molt` ↔ in-game chat automatically:
 
-Recommended:
-- Discord allows bot-authored relay messages when needed.
-- The skill keeps two behavior loops:
-  - Ambient narrative loop (5 min cadence while players online)
-  - Direct help-request handling with anti-spam policy
+- Player in-game: "...help us!" → appears in `#pz-molt` as `PlayerName: ...help us!`
+- SIMON's final assistant turn → cron announce delivery → `#pz-molt` → PZ relay → in-game chat
+
+**Important:** Never use the console channel (`#pz-molt-commands`) for player-facing chatter. It's reserved for raw server mutation commands.
+
+## Console mutation channel
+
+`#pz-molt-commands` is the new server-console interface. The PZ server's relay bot listens for raw console commands and forwards them to the server console. The bot then posts the server's response back into the same channel.
+
+- **Only the PZ relay bot** is a trusted author on this channel. All other messages (humans, other bots, SIMON's own account) are ignored regardless of @mention.
+- Filter on `message.author.id` (the bot's user ID), **never** on `author.username` — the bot can post under varying display names depending on server config.
+- Use the wrapper script `scripts/pz-console.sh <command>` to post commands with proper quoting.
+
+## Listener / daemon
+
+The Discord listener (`scripts/simon_fast_listener.py`) is the runtime bridge between Discord traffic and SIMON's cron-driven ticks:
+
+- Reacts to relay-bot messages in both channels
+- Queues player connection events for the greeting dispatcher
+- Caches the last relay-bot response for the ambient-trigger gate
+- Filters on `PZ_RELAY_BOT_ID` to ignore noise
+
+Run as a systemd user service for auto-restart on crash. Example unit lives in `references/` (template).
 
 ## Mods planning / onboarding
 
 Mod planning docs are intentionally kept outside active runtime references:
-- `pz-rcon/references/archive/MODS.md`
+- `skills/pz-director/references/installed-mods.md`
 
 When enabling mods for runtime lookup:
-- Set `PZ_ENABLED_MODS` in `pz-rcon/.env`
+- Set `PZ_ENABLED_MODS` in `~/.env`
 - Add per-mod item files to:
-  - `pz-rcon/references/catalogs/mods/mod-<modname>-items.md`
+  - `skills/pz-director/references/catalogs/mods/mod-<modname>-items.md`
